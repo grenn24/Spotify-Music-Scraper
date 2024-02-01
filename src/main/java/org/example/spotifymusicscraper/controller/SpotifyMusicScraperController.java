@@ -25,8 +25,37 @@ public class SpotifyMusicScraperController {
     //Using Constructor Injection to autowire songRepository bean as a dependency
     public SpotifyMusicScraperController(SongRepository songRepository) {
         this.webClientForApi = WebClient.builder().baseUrl("https://accounts.spotify.com/api").build();
-        this.webClientForPlaylist = WebClient.builder().baseUrl("https://api.spotify.com").build();
+        //Customise Max In-Memory Size for Buffer Codec to support large JSON responses from APIs
+        this.webClientForPlaylist = WebClient.builder().codecs(configurer ->
+            configurer.defaultCodecs().maxInMemorySize(1024 * 1024)
+        ).baseUrl("https://api.spotify.com").build();
         this.songRepository = songRepository;
+    }
+
+    @GetMapping("/spotify/playlist/{playlistId}")
+    //Fetches a list of Songs from Spotify API and saves it in the database
+    public List<Song> getPlaylistFromSpotify(@PathVariable(name="playlistId", required = false) String playlistId) {
+
+        //Fetch a list of songs
+        JSONObject JSONResponse = this.webClientForPlaylist.get()
+                .uri("/v1/playlists/" + playlistId + "/tracks")
+                .header("Authorization", "Bearer " + getAPIAccessToken())
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(String.class)
+                .map(JSONObject::new)
+                .block();
+
+        //Extract "items" array from original JSON response body
+        List<Song> songs = songParser(JSONResponse);
+        this.songRepository.saveAll(songs);
+        return songs;
+    }
+
+    @GetMapping("/spotify/playlist/database")
+    //Fetch all the songs in the database
+    public Iterable<Song> getAllSongsFromDatabase() {
+        return this.songRepository.findAll();
     }
 
     //Retrieving authentication token to attach as header for HTTP requests to Spotify API
@@ -52,24 +81,6 @@ public class SpotifyMusicScraperController {
                 .bodyToMono(APIAccessToken.class)
                 .block();
         return accessToken.getAccess_token();
-    }
-
-    @GetMapping("/spotify/playlist/{playlistId}")
-    //Fetches a list of Songs from Spotify API and returns it in the response body
-    public List<Song> getPlaylistFromSpotify(@PathVariable(name="playlistId", required = false) String playlistId) {
-
-        //Fetch a list of songs
-        JSONObject JSONResponse = this.webClientForPlaylist.get()
-                .uri("/v1/playlists/" + playlistId + "/tracks")
-                .header("Authorization", "Bearer " + getAPIAccessToken())
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(String.class)
-                .map(JSONObject::new)
-                .block();
-
-        //Extract "items" array from original JSON response body
-        return songParser(JSONResponse);
     }
 
     //Takes in a JSON Playlist file and extracts every song track contained inside with information
