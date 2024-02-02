@@ -92,7 +92,7 @@ public class SpotifyMusicScraperController {
         JSONObject matchedUrls = new JSONObject(this.webClientHelper.request("get", new HttpHeaders(), "", String.class, 1024, "https://www.googleapis.com", URI));
         String url = "https://www.youtube.com/watch?v=" + matchedUrls.getJSONArray("items").getJSONObject(0).getJSONObject("id").getString("videoId");
 
-        return matchedUrls.toString();
+        return url;
     }
 
     @GetMapping("/scraper/list/fetch/insights")
@@ -110,13 +110,13 @@ public class SpotifyMusicScraperController {
         return insights;
     }
 
-    @DeleteMapping("/scraper/list/reset")
+    @DeleteMapping("/scraper/list/delete")
     //Delete all songs in the database
     public void resetDatabase() {
         this.songRepository.deleteAll();
     }
 
-    @DeleteMapping("/scraper/list/{songName}/reset")
+    @DeleteMapping("/scraper/list/{songName}/delete")
     //Delete a specific song in the database
     public void deleteSong(@PathVariable(name="songName") String songName) {
         this.songRepository.deleteByName(songName);
