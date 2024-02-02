@@ -2,6 +2,8 @@ package org.example.spotifymusicscraper.model;
 
 import jakarta.persistence.*;
 
+import java.util.List;
+
 @Entity
 @Table(name="SONG")
 public class Song {
@@ -10,9 +12,21 @@ public class Song {
     private Integer id;
     private String name;
     private String albumName;
-    private String Artist;
+    @ElementCollection
+    private List<String> artists;
     private Integer releaseYear;
     private String genre;
+
+    public Song(String name, String albumName, List<String> artists, Integer releaseYear, String genre) {
+        this.name = name;
+        this.albumName = albumName;
+        this.artists = artists;
+        this.releaseYear = releaseYear;
+        this.genre = genre;
+    }
+
+    public Song() {
+    }
 
     //Getter and Setter methods
     public Integer getId() {
@@ -39,12 +53,12 @@ public class Song {
         this.albumName = albumName;
     }
 
-    public String getArtist() {
-        return Artist;
+    public List<String> getArtist() {
+        return this.artists;
     }
 
-    public void setArtist(String artist) {
-        Artist = artist;
+    public void setArtist(List<String> artist) {
+        this.artists = artist;
     }
 
     public Integer getReleaseYear() {
@@ -61,5 +75,17 @@ public class Song {
 
     public void setGenre(String genre) {
         this.genre = genre;
+    }
+
+    @Override
+    public String toString() {
+        return "Song{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", albumName='" + albumName + '\'' +
+                ", Artist='" + artists + '\'' +
+                ", releaseYear=" + releaseYear +
+                ", genre='" + genre + '\'' +
+                '}';
     }
 }
