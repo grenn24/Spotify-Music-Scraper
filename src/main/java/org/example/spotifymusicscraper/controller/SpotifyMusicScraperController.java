@@ -49,18 +49,6 @@ public class SpotifyMusicScraperController {
         return songs;
     }
 
-    @DeleteMapping("/scraper/list/reset")
-    //Delete all songs in the database
-    public void resetDatabase() {
-        this.songRepository.deleteAll();
-    }
-
-    @DeleteMapping("/scraper/list/{songName}/reset")
-    //Delete a specific song in the database
-    public void deleteSong(@PathVariable(name="songName") String songName) {
-        this.songRepository.deleteByName(songName);
-    }
-
     @GetMapping("/scraper/spotifytoken")
     //Retrieving OAuth2 authentication token to attach as header for subsequent HTTP requests to Spotify API
     public String getAPIAccessToken() {
@@ -120,6 +108,18 @@ public class SpotifyMusicScraperController {
         insights.put("Shortest Duration Song", this.songRepository.findAllByOrderByDurationAsc().getFirst());
 
         return insights;
+    }
+
+    @DeleteMapping("/scraper/list/reset")
+    //Delete all songs in the database
+    public void resetDatabase() {
+        this.songRepository.deleteAll();
+    }
+
+    @DeleteMapping("/scraper/list/{songName}/reset")
+    //Delete a specific song in the database
+    public void deleteSong(@PathVariable(name="songName") String songName) {
+        this.songRepository.deleteByName(songName);
     }
 
     //Takes in a JSON Playlist file and extracts every song track contained inside with information
