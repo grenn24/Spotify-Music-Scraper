@@ -16,13 +16,17 @@ public class Song {
     private List<String> artists;
     private Integer releaseYear;
     private String genre;
+    private Integer popularity;
+    private Integer duration;
 
-    public Song(String name, String albumName, List<String> artists, Integer releaseYear, String genre) {
+    public Song(String name, String albumName, List<String> artists, Integer releaseYear, String genre, Integer popularity, Integer duration) {
         this.name = name;
         this.albumName = albumName;
         this.artists = artists;
         this.releaseYear = releaseYear;
         this.genre = genre;
+        this.popularity = popularity;
+        this.duration = duration;
     }
 
     public Song() {
@@ -77,6 +81,18 @@ public class Song {
         this.genre = genre;
     }
 
+    public Integer getPopularity() { return popularity; }
+
+    public void setPopularity(Integer popularity) { this.popularity = popularity; }
+
+    public Integer getDuration() {
+        return duration;
+    }
+
+    public void setDuration(Integer duration) {
+        this.duration = duration;
+    }
+
     @Override
     public String toString() {
         return "Song{" +
@@ -86,6 +102,8 @@ public class Song {
                 ", Artist='" + artists + '\'' +
                 ", releaseYear=" + releaseYear +
                 ", genre='" + genre + '\'' +
+                ", popularity=" + popularity +
+                ", duration=" + duration +
                 '}';
     }
 }
