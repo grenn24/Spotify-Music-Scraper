@@ -22,6 +22,8 @@ import org.example.spotifymusicscraper.config.*;
 public class SpotifyMusicScraperController {
     private final SongRepository songRepository;
     private final WebClientHelper webClientHelper;
+    private final String youTubeAPIKey = ;
+    private final String spotifyClientIdClientSecret = ;
 
     @Autowired
     //Using Constructor Injection to autowire SongRepository and WebClientHelper bean as a dependency
@@ -30,42 +32,14 @@ public class SpotifyMusicScraperController {
         this.webClientHelper = webClientHelper;
     }
 
+    //Get Requests
     @GetMapping("/scraper/list")
     //Fetch all the songs in the database
     public Iterable<Song> getAllSongs() {
         return this.songRepository.findAll();
     }
-
-    @PutMapping("/scraper/add/{playlistId}")
-    //Fetches a list of Songs inside a playlist and maps each song to an entry in the database
-    public List<Song> searchPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer " + getAPIAccessToken());
-        JSONObject JSONSongs = new JSONObject(this.webClientHelper.request("get", headers, "", String.class, 1024, "https://api.spotify.com", "/v1/playlists/" + playlistId + "/tracks"));
-
-        //Convert JSON file into a List of Songs
-        List<Song> songs = songParser(JSONSongs);
-        this.songRepository.saveAll(songs);
-        return songs;
-    }
-
-    @GetMapping("/scraper/spotifytoken")
-    //Retrieving OAuth2 authentication token to attach as header for subsequent HTTP requests to Spotify API
-    public String getAPIAccessToken() {
-        String clientId = "077d57140732448996a7b50fedf3fe8f";
-        String clientSecret = "b3531f89fdba47b691a0a22c0194988c";
-        String authorization = clientId + ":" + clientSecret;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Type", "application/x-www-form-urlencoded");
-        headers.add("Authorization", "Basic " + Base64.getEncoder().encodeToString(authorization.getBytes(StandardCharsets.UTF_8)));
-
-        APIAccessToken accessToken = this.webClientHelper.request("post", headers, "grant_type=client_credentials", APIAccessToken.class, 1024, "https://accounts.spotify.com/api", "/token");
-        return accessToken.getAccess_token();
-    }
-
-    @GetMapping("/scraper/list/fetch/url")
-    //Retrieve YouTube URL for all songs in the database
+    @GetMapping("/scraper/list/url")
+    //Fetch YouTube URL for all songs in the database
     public List<String> getYouTubeURLAll() {
         Iterable<Song> songs = getAllSongs();
         List<String> songURLs = new ArrayList<>();
@@ -77,9 +51,8 @@ public class SpotifyMusicScraperController {
         }
         return songURLs;
     }
-
-    @GetMapping("/scraper/list/{songName}/fetch/url")
-    //Retrieve YouTube URL for a specific song in the database
+    @GetMapping("/scraper/list/{songName}/url")
+    //Fetch YouTube URL for a specific song in the database
     public String getYouTubeURL(@PathVariable(name="songName") String songName) {
         Song song = null;
         try {
@@ -87,15 +60,13 @@ public class SpotifyMusicScraperController {
         } catch (UnsupportedEncodingException e) {
 
         }
-        String apikey = "AIzaSyDtARoJS03eCtKJJlpZhi_eExhSMM2kDWs";
+        String apikey = this.youTubeAPIKey;
         String URI = String.format("%s?part=snippet&type=video&videoCategoryId=10&topicId=/m/04rlf&order=relevance&key=%s&publishedAfter=%s&q=%s", "/youtube/v3/search", apikey, song.getReleaseYear() + "-01-01T00:00:00Z", song.getArtist().getFirst() + " " + song.getName() + " -remix");
         JSONObject matchedUrls = new JSONObject(this.webClientHelper.request("get", new HttpHeaders(), "", String.class, 1024, "https://www.googleapis.com", URI));
         String url = "https://www.youtube.com/watch?v=" + matchedUrls.getJSONArray("items").getJSONObject(0).getJSONObject("id").getString("videoId");
-
         return url;
     }
-
-    @GetMapping("/scraper/list/fetch/insights")
+    @GetMapping("/scraper/list/insights")
     //Generates insights based on the songs in the database
     public Map<String, Object> insights() {
         Map<String, Object> insights = new LinkedHashMap<>();
@@ -106,17 +77,38 @@ public class SpotifyMusicScraperController {
         insights.put("Top 3 Songs Recently Released", this.songRepository.findAllByOrderByReleaseYearDesc().subList(0, Math.min(this.songRepository.findAllByOrderByReleaseYearDesc().size(), 3)));
         insights.put("Longest Duration Song", this.songRepository.findAllByOrderByDurationDesc().getFirst());
         insights.put("Shortest Duration Song", this.songRepository.findAllByOrderByDurationAsc().getFirst());
-
         return insights;
     }
+    @GetMapping("/scraper/spotifytoken")
+    //Fetch OAuth2 authentication token to attach as header for subsequent HTTP requests to Spotify API
+    public String getAPIAccessToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/x-www-form-urlencoded");
+        headers.add("Authorization", "Basic " + Base64.getEncoder().encodeToString(this.spotifyClientIdClientSecret.getBytes(StandardCharsets.UTF_8)));
+        APIAccessToken accessToken = this.webClientHelper.request("post", headers, "grant_type=client_credentials", APIAccessToken.class, 1024, "https://accounts.spotify.com/api", "/token");
+        return accessToken.getAccess_token();
+    }
 
-    @DeleteMapping("/scraper/list/delete")
+    //Put Requests
+    @PutMapping("/scraper/list/{playlistId}")
+    //Fetches a list of Songs inside a playlist and maps each song to an entry in the database
+    public List<Song> searchPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + getAPIAccessToken());
+        JSONObject JSONSongs = new JSONObject(this.webClientHelper.request("get", headers, "", String.class, 1024, "https://api.spotify.com", "/v1/playlists/" + playlistId + "/tracks"));
+        //Convert JSON file into a List of Songs
+        List<Song> songs = songParser(JSONSongs);
+        this.songRepository.saveAll(songs);
+        return songs;
+    }
+
+    //Delete Requests
+    @DeleteMapping("/scraper/list")
     //Delete all songs in the database
     public void resetDatabase() {
         this.songRepository.deleteAll();
     }
-
-    @DeleteMapping("/scraper/list/{songName}/delete")
+    @DeleteMapping("/scraper/list/{songName}")
     //Delete a specific song in the database
     public void deleteSong(@PathVariable(name="songName") String songName) {
         this.songRepository.deleteByName(songName);
@@ -169,7 +161,6 @@ public class SpotifyMusicScraperController {
                 }
             }
         }
-
         if (field.equalsIgnoreCase("genre")) {
             for (Song song: songs) {
                 if (map.containsKey(song.getGenre())) {
@@ -185,7 +176,6 @@ public class SpotifyMusicScraperController {
                 }
             }
         }
-
         return null;
     }
 }
