@@ -22,8 +22,8 @@ import org.example.spotifymusicscraper.config.*;
 public class SpotifyMusicScraperController {
     private final SongRepository songRepository;
     private final WebClientHelper webClientHelper;
-    private final String youTubeAPIKey = ;
-    private final String spotifyClientIdClientSecret = ;
+    private final String youTubeAPIKey = "";
+    private final String spotifyClientIdClientSecret = "";
 
     @Autowired
     //Using Constructor Injection to autowire SongRepository and WebClientHelper bean as a dependency
@@ -44,10 +44,7 @@ public class SpotifyMusicScraperController {
         Iterable<Song> songs = getAllSongs();
         List<String> songURLs = new ArrayList<>();
         for (Song song: songs) {
-            String apikey = "AIzaSyDtARoJS03eCtKJJlpZhi_eExhSMM2kDWs";
-            String URI = String.format("%s?part=snippet&type=video&videoCategoryId=10&topicId=/m/04rlf&order=relevance&key=%s&publishedAfter=%s&q=%s", "/youtube/v3/search", apikey, song.getReleaseYear() + "-01-01T00:00:00Z", song.getArtist().getFirst() + " " + song.getName() + " -remix");
-            JSONObject matchedUrls = new JSONObject(this.webClientHelper.request("get", new HttpHeaders(), "", String.class, 1024, "https://www.googleapis.com", URI));
-            songURLs.add("https://www.youtube.com/watch?v=" + matchedUrls.getJSONArray("items").getJSONObject(0).getJSONObject("id").getString("videoId"));
+            songURLs.add(getYouTubeURL(song));
         }
         return songURLs;
     }
@@ -60,21 +57,17 @@ public class SpotifyMusicScraperController {
         } catch (UnsupportedEncodingException e) {
 
         }
-        String apikey = this.youTubeAPIKey;
-        String URI = String.format("%s?part=snippet&type=video&videoCategoryId=10&topicId=/m/04rlf&order=relevance&key=%s&publishedAfter=%s&q=%s", "/youtube/v3/search", apikey, song.getReleaseYear() + "-01-01T00:00:00Z", song.getArtist().getFirst() + " " + song.getName() + " -remix");
-        JSONObject matchedUrls = new JSONObject(this.webClientHelper.request("get", new HttpHeaders(), "", String.class, 1024, "https://www.googleapis.com", URI));
-        String url = "https://www.youtube.com/watch?v=" + matchedUrls.getJSONArray("items").getJSONObject(0).getJSONObject("id").getString("videoId");
-        return url;
+        return getYouTubeURL(song);
     }
     @GetMapping("/scraper/list/insights")
     //Generates insights based on the songs in the database
     public Map<String, Object> insights() {
         Map<String, Object> insights = new LinkedHashMap<>();
         insights.put("Total Number of Songs", this.songRepository.count());
-        insights.put("Your Favourite Artist", artistSort(this.songRepository.findAll(), "artists"));
-        insights.put("Your Favourite Genre", artistSort(this.songRepository.findAll(), "genre"));
-        insights.put("Top 3 Songs Currently Popular", this.songRepository.findAllByOrderByPopularityDesc().subList(0, Math.min(this.songRepository.findAllByOrderByPopularityDesc().size(), 3)));
-        insights.put("Top 3 Songs Recently Released", this.songRepository.findAllByOrderByReleaseYearDesc().subList(0, Math.min(this.songRepository.findAllByOrderByReleaseYearDesc().size(), 3)));
+        insights.put("Your Favourite Artist", sort(this.songRepository.findAll(), "artists"));
+        insights.put("Your Favourite Genre", sort(this.songRepository.findAll(), "genre"));
+        insights.put("Most Popular Songs", this.songRepository.findMostPopularSongs());
+        insights.put("Newest Songs", this.songRepository.findNewestSongs());
         insights.put("Longest Duration Song", this.songRepository.findAllByOrderByDurationDesc().getFirst());
         insights.put("Shortest Duration Song", this.songRepository.findAllByOrderByDurationAsc().getFirst());
         return insights;
@@ -95,9 +88,9 @@ public class SpotifyMusicScraperController {
     public List<Song> searchPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + getAPIAccessToken());
-        JSONObject JSONSongs = new JSONObject(this.webClientHelper.request("get", headers, "", String.class, 1024, "https://api.spotify.com", "/v1/playlists/" + playlistId + "/tracks"));
+        JSONObject JSONSongs = this.webClientHelper.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/playlists/" + playlistId + "/tracks");
         //Convert JSON file into a List of Songs
-        List<Song> songs = songParser(JSONSongs);
+        List<Song> songs = getListOfSongsFromJSONObject(JSONSongs);
         this.songRepository.saveAll(songs);
         return songs;
     }
@@ -115,38 +108,59 @@ public class SpotifyMusicScraperController {
     }
 
     //Takes in a JSON Playlist file and extracts every song track contained inside with information
-    public List<Song> songParser(JSONObject jsonObject) {
+    public List<Song> getListOfSongsFromJSONObject(JSONObject jsonObject) {
         List<Song> songs = new ArrayList<>();
         JSONArray arrayOfSongs = jsonObject.getJSONArray("items");
         for (int i = 0; i < arrayOfSongs.length(); i++) {
             JSONObject song = arrayOfSongs.getJSONObject(i).getJSONObject("track");
             String name = song.getString("name");
             String albumName = song.getJSONObject("album").getString("name");
-            List<String> artists = getArtistName(song.getJSONArray("artists"));
-            Integer releaseYear = Integer.valueOf(song.getJSONObject("album").getString("release_date").substring(0, 4));
-            String genre = song.getJSONObject("album").getString("type");
+            String artists = getArtistName(song.getJSONArray("artists"));
+            String releaseDate  = song.getJSONObject("album").getString("release_date");
+            String genre = getSongGenreFromJSONObject(song);
             Integer popularity = song.getInt("popularity");
             Integer duration = song.getInt("duration_ms");
-            songs.add(new Song(name, albumName, artists, releaseYear, genre, popularity, duration));
+
+            //Create new Song object and fetch its YouTube URL;
+            Song newSong = new Song(name, albumName, artists, releaseDate, genre, popularity, duration);
+            //newSong.setYouTubeURL(getYouTubeURL(newSong));
+            songs.add(newSong);
         }
         return songs;
     }
 
-    //Takes in a JSONArray of Artists, returns a list of artists
-    public List<String> getArtistName(JSONArray artists) {
-        List<String> artistList = new ArrayList<>();
-        for (int i = 0; i < artists.length(); i++) {
-            artistList.add(artists.getJSONObject(i).getString("name"));
+    public String getSongGenreFromJSONObject(JSONObject song) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + getAPIAccessToken());
+        String artistId = song.getJSONArray("artists").getJSONObject(0).getString("id");
+        JSONArray JSONGenres = this.webClientHelper.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/artists/" + artistId).getJSONArray("genres");
+        if (JSONGenres.isEmpty()) {
+            return "";
         }
-        return artistList;
+        //Use a regex pattern to properly format the genre string
+        String genre = JSONGenres.toString().replaceAll("[\\[]*\\\"[\\]]*", " ").trim();
+        return genre;
+    }
+
+    //Takes in a JSONArray of Artists, returns a list of artists
+    public String getArtistName(JSONArray artists) {
+        String string = "";
+        for (int i = 0; i < artists.length(); i++) {
+            string += (artists.getJSONObject(i).getString("name"));
+            if (i != artists.length() - 1) {
+                string += ", ";
+            }
+        }
+        return string;
     }
 
     //Takes in a List of Songs, find the value that is most occurring for a specific Table Field
-    public String artistSort(Iterable<Song> songs, String field) {
+    public String sort(Iterable<Song> songs, String field) {
         Map<String, Integer> map = new HashMap<>();
         if (field.equalsIgnoreCase("artists")) {
             for (Song song: songs) {
-                for (String artist: song.getArtist()) {
+                String[] artists = song.getArtist().split(", ");
+                for (String artist: artists) {
                     if (map.containsKey(artist)) {
                         map.put(artist, map.get(artist) + 1);
                     } else {
@@ -163,10 +177,13 @@ public class SpotifyMusicScraperController {
         }
         if (field.equalsIgnoreCase("genre")) {
             for (Song song: songs) {
-                if (map.containsKey(song.getGenre())) {
-                    map.put(song.getGenre(), map.get(song.getGenre()) + 1);
-                } else {
-                    map.put(song.getGenre(), 1);
+                String[] genres = song.getGenre().split(" , ");
+                for (String genre: genres) {
+                    if (map.containsKey(genre)) {
+                        map.put(genre, map.get(genre) + 1);
+                    } else {
+                        map.put(genre, 1);
+                    }
                 }
             }
             Integer maxValue = Collections.max(map.values());
@@ -177,5 +194,14 @@ public class SpotifyMusicScraperController {
             }
         }
         return null;
+    }
+
+    //Get the YouTube URL from a Song object
+    public String getYouTubeURL (Song song) {
+        String apikey = this.youTubeAPIKey;
+        String URI = String.format("%s?part=snippet&type=video&videoCategoryId=10&topicId=/m/04rlf&order=relevance&key=%s&publishedAfter=%s&q=%s", "/youtube/v3/search", apikey, song.getReleaseDate() + "T00:00:00Z", song.getArtist().replaceAll(", ", " ") + " " + song.getName() + " -remix");
+        JSONObject matchedUrls = new JSONObject(this.webClientHelper.request("get", new HttpHeaders(), "", String.class, 1024, "https://www.googleapis.com", URI));
+        String url = "https://www.youtube.com/watch?v=" + matchedUrls.getJSONArray("items").getJSONObject(0).getJSONObject("id").getString("videoId");
+        return url;
     }
 }

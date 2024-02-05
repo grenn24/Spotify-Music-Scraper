@@ -2,34 +2,44 @@ package org.example.spotifymusicscraper.model;
 
 import jakarta.persistence.*;
 
-import java.util.List;
+import java.util.Date;
 
 @Entity
-@Table(name="SONG")
+@Table(schema = "public", name = "Song")
 public class Song {
     @Id
     @GeneratedValue
     private Integer id;
+    @Column(name = "Name")
     private String name;
-    private String albumName;
-    @ElementCollection
-    private List<String> artists;
-    private Integer releaseYear;
+    @Column(name = "Album")
+    private String album;
+    @Column(name = "Artists")
+    private String artists;
+    @Column(name = "Release_Date")
+    private String releaseDate;
+    @Column(name = "Genre")
     private String genre;
+    @Column(name = "Popularity")
     private Integer popularity;
+    @Column(name = "Duration")
     private Integer duration;
+    @Column(name = "YouTube_URL")
+    private String youTubeURL;
 
-    public Song(String name, String albumName, List<String> artists, Integer releaseYear, String genre, Integer popularity, Integer duration) {
+    public Song(String name, String album, String artists, String releaseDate, String genre, Integer popularity, Integer duration) {
         this.name = name;
-        this.albumName = albumName;
+        this.album = album;
         this.artists = artists;
-        this.releaseYear = releaseYear;
+        this.releaseDate = releaseDate;
         this.genre = genre;
         this.popularity = popularity;
         this.duration = duration;
+        this.youTubeURL = youTubeURL;
     }
 
     public Song() {
+
     }
 
     //Getter and Setter methods
@@ -50,27 +60,27 @@ public class Song {
     }
 
     public String getAlbumName() {
-        return albumName;
+        return album;
     }
 
     public void setAlbumName(String albumName) {
-        this.albumName = albumName;
+        this.album = albumName;
     }
 
-    public List<String> getArtist() {
+    public String getArtist() {
         return this.artists;
     }
 
-    public void setArtist(List<String> artist) {
+    public void setArtist(String artist) {
         this.artists = artist;
     }
 
-    public Integer getReleaseYear() {
-        return releaseYear;
+    public String getReleaseDate() {
+        return releaseDate;
     }
 
-    public void setReleaseYear(Integer releaseYear) {
-        this.releaseYear = releaseYear;
+    public void setReleaseDate(String releaseDate) {
+        this.releaseDate = releaseDate;
     }
 
     public String getGenre() {
@@ -93,17 +103,26 @@ public class Song {
         this.duration = duration;
     }
 
+    public String getYouTubeURL() {
+        return youTubeURL;
+    }
+
+    public void setYouTubeURL(String youTubeURL) {
+        this.youTubeURL = youTubeURL;
+    }
+
     @Override
     public String toString() {
         return "Song{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
-                ", albumName='" + albumName + '\'' +
-                ", Artist='" + artists + '\'' +
-                ", releaseYear=" + releaseYear +
+                ", album='" + album + '\'' +
+                ", artists=" + artists +
+                ", releaseDate=" + releaseDate +
                 ", genre='" + genre + '\'' +
                 ", popularity=" + popularity +
                 ", duration=" + duration +
+                ", youTubeURL='" + youTubeURL + '\'' +
                 '}';
     }
 }
