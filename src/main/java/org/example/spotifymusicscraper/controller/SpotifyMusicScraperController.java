@@ -9,6 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,12 +19,19 @@ import org.example.spotifymusicscraper.config.*;
 
 //Route incoming HTTP requests to different methods
 @RestController
+@RequestMapping("/scraper")
 @ResponseBody
 public class SpotifyMusicScraperController {
     private final SongRepository songRepository;
     private final WebClientHelper webClientHelper;
-    private final String youTubeAPIKey = "";
-    private final String spotifyClientIdClientSecret = "";
+
+    //Using value injection to automatically initialise credentials from application.properties file
+    @Value("${youtube.apikey}")
+    private String youTubeAPIKey;
+    @Value("${spotify.client.id}")
+    private String spotifyClientId;
+    @Value("${spotify.client.secret}")
+    private String spotifyClientSecret;
 
     @Autowired
     //Using Constructor Injection to autowire SongRepository and WebClientHelper bean as a dependency
@@ -33,12 +41,12 @@ public class SpotifyMusicScraperController {
     }
 
     //Get Requests
-    @GetMapping("/scraper/list")
+    @GetMapping("/list")
     //Fetch all the songs in the database
     public Iterable<Song> getAllSongs() {
         return this.songRepository.findAll();
     }
-    @GetMapping("/scraper/list/url")
+    @GetMapping("/list/url")
     //Fetch YouTube URL for all songs in the database
     public List<String> getYouTubeURLAll() {
         Iterable<Song> songs = getAllSongs();
@@ -48,7 +56,7 @@ public class SpotifyMusicScraperController {
         }
         return songURLs;
     }
-    @GetMapping("/scraper/list/{songName}/url")
+    @GetMapping("/list/{songName}/url")
     //Fetch YouTube URL for a specific song in the database
     public String getYouTubeURL(@PathVariable(name="songName") String songName) {
         Song song = null;
@@ -59,7 +67,7 @@ public class SpotifyMusicScraperController {
         }
         return getYouTubeURL(song);
     }
-    @GetMapping("/scraper/list/insights")
+    @GetMapping("/list/insights")
     //Generates insights based on the songs in the database
     public Map<String, Object> insights() {
         Map<String, Object> insights = new LinkedHashMap<>();
@@ -72,18 +80,18 @@ public class SpotifyMusicScraperController {
         insights.put("Shortest Duration Song", this.songRepository.findAllByOrderByDurationAsc().getFirst());
         return insights;
     }
-    @GetMapping("/scraper/spotifytoken")
+    @GetMapping("/spotifytoken")
     //Fetch OAuth2 authentication token to attach as header for subsequent HTTP requests to Spotify API
     public String getAPIAccessToken() {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Type", "application/x-www-form-urlencoded");
-        headers.add("Authorization", "Basic " + Base64.getEncoder().encodeToString(this.spotifyClientIdClientSecret.getBytes(StandardCharsets.UTF_8)));
+        headers.add("Authorization", "Basic " + Base64.getEncoder().encodeToString((this.spotifyClientId + ":" + this.spotifyClientSecret).getBytes(StandardCharsets.UTF_8)));
         APIAccessToken accessToken = this.webClientHelper.request("post", headers, "grant_type=client_credentials", APIAccessToken.class, 1024, "https://accounts.spotify.com/api", "/token");
         return accessToken.getAccess_token();
     }
 
     //Put Requests
-    @PutMapping("/scraper/list/{playlistId}")
+    @PutMapping("/list/{playlistId}")
     //Fetches a list of Songs inside a playlist and maps each song to an entry in the database
     public List<Song> addNewPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
         HttpHeaders headers = new HttpHeaders();
@@ -96,12 +104,12 @@ public class SpotifyMusicScraperController {
     }
 
     //Delete Requests
-    @DeleteMapping("/scraper/list")
+    @DeleteMapping("/list")
     //Delete all songs in the database
     public void resetDatabase() {
         this.songRepository.deleteAll();
     }
-    @DeleteMapping("/scraper/list/{songName}")
+    @DeleteMapping("/list/{songName}")
     //Delete a specific song in the database
     public void deleteSong(@PathVariable(name="songName") String songName) {
         this.songRepository.deleteByName(songName);
