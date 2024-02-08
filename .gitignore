@@ -31,4 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
 /Useful Curl Commands.txt
+/src/main/resources/application.properties
