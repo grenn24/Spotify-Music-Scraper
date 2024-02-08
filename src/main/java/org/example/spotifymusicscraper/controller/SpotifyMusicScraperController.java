@@ -85,7 +85,7 @@ public class SpotifyMusicScraperController {
     //Put Requests
     @PutMapping("/scraper/list/{playlistId}")
     //Fetches a list of Songs inside a playlist and maps each song to an entry in the database
-    public List<Song> searchPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
+    public List<Song> addNewPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + getAPIAccessToken());
         JSONObject JSONSongs = this.webClientHelper.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/playlists/" + playlistId + "/tracks");
@@ -123,7 +123,7 @@ public class SpotifyMusicScraperController {
 
             //Create new Song object and fetch its YouTube URL;
             Song newSong = new Song(name, albumName, artists, releaseDate, genre, popularity, duration);
-            //newSong.setYouTubeURL(getYouTubeURL(newSong));
+            newSong.setYouTubeURL(getYouTubeURL(newSong));
             songs.add(newSong);
         }
         return songs;
@@ -144,14 +144,17 @@ public class SpotifyMusicScraperController {
 
     //Takes in a JSONArray of Artists, returns a list of artists
     public String getArtistName(JSONArray artists) {
-        String string = "";
+        String names = "";
+        if (artists.isEmpty()) {
+            return names;
+        }
         for (int i = 0; i < artists.length(); i++) {
-            string += (artists.getJSONObject(i).getString("name"));
+            names += (artists.getJSONObject(i).getString("name"));
             if (i != artists.length() - 1) {
-                string += ", ";
+                names += ", ";
             }
         }
-        return string;
+        return names;
     }
 
     //Takes in a List of Songs, find the value that is most occurring for a specific Table Field
@@ -159,6 +162,9 @@ public class SpotifyMusicScraperController {
         Map<String, Integer> map = new HashMap<>();
         if (field.equalsIgnoreCase("artists")) {
             for (Song song: songs) {
+                if (song.getArtist().isEmpty()) {
+                    continue;
+                }
                 String[] artists = song.getArtist().split(", ");
                 for (String artist: artists) {
                     if (map.containsKey(artist)) {
@@ -177,6 +183,9 @@ public class SpotifyMusicScraperController {
         }
         if (field.equalsIgnoreCase("genre")) {
             for (Song song: songs) {
+                if (song.getGenre().isEmpty()) {
+                    continue;
+                }
                 String[] genres = song.getGenre().split(" , ");
                 for (String genre: genres) {
                     if (map.containsKey(genre)) {
