@@ -1,13 +1,24 @@
-package org.example.spotifymusicscraper.config;
+package org.example.spotifymusicscraper.service;
 
+import org.example.spotifymusicscraper.model.APIAccessToken;
 import org.json.JSONObject;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-@Configuration
-public class WebClientHelper {
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
+@Service
+public class WebClientService {
+    //Using value injection to automatically initialise credentials from application.properties file
+    @Value("${spotify.client.id}")
+    private String spotifyClientId;
+    @Value("${spotify.client.secret}")
+    private String spotifyClientSecret;
+
     public <T> T request(String requestType, HttpHeaders headers, String requestBody, Class<T> responseType, Integer bufferSize, String baseURL, String URI) {
         //Custom Max In-Memory Size for Buffer Codec to support large JSON responses from APIs
         WebClient webClient = WebClient.builder().codecs(configurer ->
@@ -98,5 +109,13 @@ public class WebClientHelper {
             return response;
         }
         return null;
+    }
+
+    public String getAPIAccessToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/x-www-form-urlencoded");
+        headers.add("Authorization", "Basic " + Base64.getEncoder().encodeToString((spotifyClientId + ":" + spotifyClientSecret).getBytes(StandardCharsets.UTF_8)));
+        APIAccessToken accessToken = request("post", headers, "grant_type=client_credentials", APIAccessToken.class, 1024, "https://accounts.spotify.com/api", "/token");
+        return accessToken.getAccess_token();
     }
 }

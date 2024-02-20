@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Music Scraper</title>
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <h1>Welcome to Spotify Music Scraper</h1>
+    <p>This is the homepage of the Spotify Music Scraper application.</p>
+    <p>You can perform various actions using the endpoints provided by the application:</p>
+    <ul>
+        <li><a class="button" href="/scraper/list">Get all songs</a></li>
+        <li><a class="button" href="/scraper/list/url">Get YouTube URL for all songs</a></li>
+        <li><a class="button" href="/scraper/list/{songName}/url">Get YouTube URL for a specific song</a></li>
+        <li><a class="button" href="/scraper/list/insights">Generate insights based on the songs</a></li>
+        <li><a class="button" href="/scraper/spotifytoken">Get Spotify API access token</a></li>
+        <li>
+            <form action="/scraper/list/{playlistId}" method="get">
+                <label for="playlistId">Enter Playlist ID:</label>
+                <input type="text" id="playlistId" name="playlistId" placeholder="" required>
+                <button type="submit" class="button">Fetch songs</button>
+            </form>
+        </li>
+        <li><a class="button" href="/scraper/list">Delete all songs</a></li>
+        <li><a class="button" href="/scraper/list/{songName}">Delete a specific song</a></li>
+    </ul>
+    <script src="js/spotifyPlaylists.js" type="text/javascript"></script>
+    <p>You can use the provided links to interact with the application.</p>
+    <p>For more details, please refer to the API documentation.</p>
+    <p>For any issues or inquiries, please contact the administrator.</p>
+    <p style="text-align: center;"><a class="button" href="https://www.example.com/api-docs">API Documentation</a></p>
+</div>
+</body>
+</html>

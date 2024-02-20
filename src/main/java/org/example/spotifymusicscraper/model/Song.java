@@ -3,25 +3,31 @@ package org.example.spotifymusicscraper.model;
 import jakarta.persistence.*;
 
 import java.util.Date;
+import java.util.Objects;
 
 @Entity
 @Table(schema = "public", name = "Song")
+@IdClass(SongId.class)
 public class Song {
     @Id
-    @GeneratedValue
-    private Integer id;
     @Column(name = "Name")
     private String name;
+    @Id
     @Column(name = "Album")
     private String album;
+    @Id
     @Column(name = "Artists")
     private String artists;
+    @Id
     @Column(name = "Release_Date")
     private String releaseDate;
+    @Id
     @Column(name = "Genre")
     private String genre;
+    @Id
     @Column(name = "Popularity")
     private Integer popularity;
+    @Id
     @Column(name = "Duration")
     private Integer duration;
     @Column(name = "YouTube_URL")
@@ -39,18 +45,9 @@ public class Song {
     }
 
     public Song() {
-
     }
 
     //Getter and Setter methods
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
     public String getName() {
         return name;
     }
@@ -114,15 +111,22 @@ public class Song {
     @Override
     public String toString() {
         return "Song{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
+                "name='" + name + '\'' +
                 ", album='" + album + '\'' +
-                ", artists=" + artists +
-                ", releaseDate=" + releaseDate +
+                ", artists='" + artists + '\'' +
+                ", releaseDate='" + releaseDate + '\'' +
                 ", genre='" + genre + '\'' +
                 ", popularity=" + popularity +
                 ", duration=" + duration +
                 ", youTubeURL='" + youTubeURL + '\'' +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || !(o instanceof Song)) return false;
+        Song song = (Song) o;
+        return Objects.equals(name, song.name) && Objects.equals(album, song.album) && Objects.equals(artists, song.artists) && Objects.equals(releaseDate, song.releaseDate) && Objects.equals(genre, song.genre) && Objects.equals(popularity, song.popularity) && Objects.equals(duration, song.duration) && Objects.equals(youTubeURL, song.youTubeURL);
     }
 }
