@@ -6,8 +6,11 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.FileNotFoundException;
 import java.util.*;
 
 @Service
@@ -35,6 +38,9 @@ public class SongParserService {
 
     //Fetch YouTube URL corresponding to a list of Songs
     public List<String> fetchYouTubeURL(Iterable<Song> songs) {
+        if (((List<Song>) songs).isEmpty()) {
+            throw new NullPointerException("No songs available for parsing");
+        }
         List<String> songURLs = new ArrayList<>();
         for (Song song: songs) {
             songURLs.add(fetchYouTubeURL(song));
@@ -44,6 +50,9 @@ public class SongParserService {
 
     //Finds the most frequent element in a given field (e.g. artists) among a list of songs
     public String findMostFrequentFieldElement(Iterable<Song> songs, String field) {
+        if (((List<Song>) songs).isEmpty()) {
+            throw new NullPointerException("No songs available for parsing");
+        }
         Map<String, Integer> map = new HashMap<>();
         //Artists Field
         if (field.equalsIgnoreCase("artists")) {
@@ -108,7 +117,7 @@ public class SongParserService {
 
             //Create new Song object and fetch its YouTube URL;
             Song newSong = new Song(name, albumName, artists, releaseDate, genre, popularity, duration);
-            newSong.setYouTubeURL(fetchYouTubeURL(newSong));
+            //newSong.setYouTubeURL(fetchYouTubeURL(newSong));
             songs.add(newSong);
         }
         return songs;
@@ -118,7 +127,12 @@ public class SongParserService {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + webClientService.getAPIAccessToken());
         String artistId = song.getJSONArray("artists").getJSONObject(0).getString("id");
-        JSONArray JSONGenres = webClientService.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/artists/" + artistId).getJSONArray("genres");
+        JSONArray JSONGenres = null;
+        try {
+            JSONGenres = webClientService.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/artists/" + artistId).getJSONArray("genres");
+        } catch (FileNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Artist ID does not exist", e);
+        }
         if (JSONGenres.isEmpty()) {
             return "";
         }

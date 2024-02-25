@@ -1,5 +1,6 @@
 package org.example.spotifymusicscraper.controller;
 
+import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.*;
@@ -8,10 +9,12 @@ import org.json.JSONObject;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import org.example.spotifymusicscraper.model.*;
 import org.example.spotifymusicscraper.service.*;
+import org.springframework.web.server.ResponseStatusException;
 
 //Route incoming HTTP requests to different methods
 @RestController
@@ -32,40 +35,51 @@ public class SpotifyMusicScraperController {
 
     //Get Requests
     @GetMapping("/list")
+    @ResponseStatus(code = HttpStatus.OK)
     //Fetch all the songs in the database
     public Iterable<Song> getAllSongs() {
         return dataAccessService.fetchSongsFromDatabase();
     }
     @GetMapping("/list/url")
+    @ResponseStatus(code = HttpStatus.OK)
     //Fetch YouTube URL for all songs in the database
     public List<String> getYouTubeURLAll() {
         return songParserService.fetchYouTubeURL(dataAccessService.fetchSongsFromDatabase());
     }
     @GetMapping("/list/{songName}/url")
+    @ResponseStatus(code = HttpStatus.OK)
     //Fetch YouTube URL for a specific song in the database
-    public String getYouTubeURL(@PathVariable(name="songName") String songName) {
-        Song song = null;
+    public List<String> getYouTubeURL(@PathVariable(name="songName") String songName) {
+        List<Song> songs = null;
         try {
-            song = dataAccessService.fetchSongsFromDatabase(URLDecoder.decode(songName, "UTF-8"));
+            songs = dataAccessService.fetchSongsFromDatabase(URLDecoder.decode(songName, "UTF-8"));
         } catch (UnsupportedEncodingException e) {
-            return null;
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (FileNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
-        return songParserService.fetchYouTubeURL(song);
+        return songParserService.fetchYouTubeURL(songs);
     }
     @GetMapping("/list/insights")
+    @ResponseStatus(code = HttpStatus.OK)
     //Generates insights based on the songs in the database
     public Map<String, Object> insights() {
         Map<String, Object> insights = new LinkedHashMap<>();
-        insights.put("Total Number of Songs", dataAccessService.countDatabase());
-        insights.put("Your Favourite Artist", songParserService.findMostFrequentFieldElement(dataAccessService.fetchSongsFromDatabase(), "artists"));
-        insights.put("Your Favourite Genre", songParserService.findMostFrequentFieldElement(dataAccessService.fetchSongsFromDatabase(), "genre"));
-        insights.put("Most Popular Songs", dataAccessService.fetchMostPopularSongsFromDatabase());
-        insights.put("Newest Songs", dataAccessService.fetchNewestSongsFromDatabase());
-        insights.put("Longest Duration Song", dataAccessService.fetchLongestDurationSongFromDatabase());
-        insights.put("Shortest Duration Song", dataAccessService.fetchShortestDurationSongFromDatabase());
+        try {
+            insights.put("Total Number of Songs", dataAccessService.countDatabase());
+            insights.put("Your Favourite Artist", songParserService.findMostFrequentFieldElement(dataAccessService.fetchSongsFromDatabase(), "artists"));
+            insights.put("Your Favourite Genre", songParserService.findMostFrequentFieldElement(dataAccessService.fetchSongsFromDatabase(), "genre"));
+            insights.put("Most Popular Songs", dataAccessService.fetchMostPopularSongsFromDatabase());
+            insights.put("Newest Songs", dataAccessService.fetchNewestSongsFromDatabase());
+            insights.put("Longest Duration Song", dataAccessService.fetchLongestDurationSongFromDatabase());
+            insights.put("Shortest Duration Song", dataAccessService.fetchShortestDurationSongFromDatabase());
+        } catch (NullPointerException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        }
         return insights;
     }
     @GetMapping("/spotifytoken")
+    @ResponseStatus(code = HttpStatus.OK)
     //Fetch OAuth2 authentication token to attach as header for subsequent HTTP requests to Spotify API
     public String getAPIAccessToken() {
         return webClientService.getAPIAccessToken();
@@ -73,11 +87,17 @@ public class SpotifyMusicScraperController {
 
     //Put Requests
     @PutMapping("/list/{playlistId}")
+    @ResponseStatus(code = HttpStatus.CREATED, reason = "Songs from spotify playlist were successfully added to the database")
     //Fetches a list of Songs inside a playlist and maps each song to an entry in the database
     public List<Song> addNewPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + getAPIAccessToken());
-        JSONObject JSONSongs = webClientService.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/playlists/" + playlistId + "/tracks");
+        JSONObject JSONSongs = null;
+        try {
+            JSONSongs = webClientService.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/playlists/" + playlistId + "/tracks");
+        } catch (FileNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
 
         //Convert JSON file into a List of Songs
         List<Song> songs = songParserService.convertJSONObjectToListOfSongs(JSONSongs);
@@ -87,13 +107,19 @@ public class SpotifyMusicScraperController {
 
     //Delete Requests
     @DeleteMapping("/list")
+    @ResponseStatus(code = HttpStatus.OK, reason = "All songs deleted from database")
     //Delete all songs in the database
     public void resetDatabase() {
         dataAccessService.deleteSongsFromDatabase();
     }
     @DeleteMapping("/list/{songName}")
+    @ResponseStatus(code = HttpStatus.OK, reason = "Specified song deleted from database")
     //Delete a specific song in the database
-    public void deleteSong(@PathVariable(name="songName") String songName) {
-        dataAccessService.deleteSongsFromDatabase(songName);
+    public void deleteSong(@PathVariable(name="songName") String name) {
+        try {
+            dataAccessService.deleteSongsFromDatabase(name);
+        } catch (FileNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
     }
 }

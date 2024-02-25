@@ -5,6 +5,7 @@ import org.example.spotifymusicscraper.repository.SongRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,11 +19,12 @@ public class DataAccessService {
     }
 
     //Fetch songs from the database
-    public Song fetchSongsFromDatabase(String name) {
-        return songRepository.findByName(name).getFirst();
-    }
-    public Optional<Song> fetchSongsFromDatabase(Integer id) {
-        return songRepository.findById(id);
+    public List<Song> fetchSongsFromDatabase(String name) throws FileNotFoundException {
+        List<Song> songs = songRepository.findByName(name);
+        if (songs.isEmpty() && songRepository.count() != 0) {
+            throw new FileNotFoundException("Specified song does not exist inside database");
+        }
+        return songs;
     }
     public Iterable<Song> fetchSongsFromDatabase() {
         return songRepository.findAll();
@@ -44,8 +46,11 @@ public class DataAccessService {
     public void deleteSongsFromDatabase() {
         songRepository.deleteAll();
     }
-    public void deleteSongsFromDatabase(String songName) {
-        songRepository.deleteByName(songName);
+    public void deleteSongsFromDatabase(String name) throws FileNotFoundException {
+        if (songRepository.findByName(name).isEmpty() && songRepository.count() != 0) {
+            throw new FileNotFoundException("Specified song does not exist inside database");
+        }
+        songRepository.deleteByName(name);
     }
 
     //Count songs inside database

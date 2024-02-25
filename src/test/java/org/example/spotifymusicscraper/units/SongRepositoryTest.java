@@ -1,8 +1,7 @@
-package org.example.spotifymusicscraper;
+package org.example.spotifymusicscraper.units;
 
 import org.example.spotifymusicscraper.model.Song;
 import org.example.spotifymusicscraper.repository.SongRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;

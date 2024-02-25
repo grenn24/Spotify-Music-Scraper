@@ -1,4 +1,4 @@
-package org.example.spotifymusicscraper;
+package org.example.spotifymusicscraper.units;
 
 import org.example.spotifymusicscraper.model.Song;
 import org.example.spotifymusicscraper.repository.SongRepository;
@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,32 +35,35 @@ public class DataAccessServiceTest {
     }
 
     @Test
-    void fetchSongsFromDatabase() throws Exception{
+    void fetchSongsFromDatabase() throws FileNotFoundException{
         Song song1 = new Song("WE", "Lover", "Taylor Swift", "2024", "Pop", 999, 64);
         Song song2 = new Song("WE", "Lover", "Taylor Swift", "2020", "Pop", 999, 64);
         Song song3 = new Song("You", "Be", "Miley Cyrus", "2023", "Pop", 653, 32);
 
         //Mocking the behaviour of songRepository
-        when(songRepository.findById(1)).thenReturn(Optional.of(song1));
-        List<Song> songs = new ArrayList<>();
-        songs.add(song1);
-        songs.add(song2);
-        when(songRepository.findByName("WE")).thenReturn(songs);
-        songs.add(song3);
-        when(songRepository.findAll()).thenReturn(songs);
+        List<Song> songs1 = new ArrayList<>();
+        List<Song> songs2 = new ArrayList<>();
+        songs1.add(song1);
+        songs2.add(song1);
+        songs1.add(song2);
+        songs2.add(song2);
+        songs1.add(song3);
+        doAnswer(i -> {
+            songs1.remove(song3);
+            return songs1;
+        }).when(songRepository).findByName("WE");
+        when(songRepository.findByName("Hi")).thenReturn(new ArrayList<>());
+        when(songRepository.findAll()).thenReturn(songs1);
+        when(songRepository.count()).thenReturn(3L);
 
-        //FindByID
-        Optional<Song> fetchedSong1 = dataAccessService.fetchSongsFromDatabase(1);
-        if (fetchedSong1.isEmpty()) {
-            throw new Exception("No Song Fetched");
-        }
-        assertEquals(song1, fetchedSong1.get());
-        //FindByName
-        Song fetchedSong2 = dataAccessService.fetchSongsFromDatabase("WE");
-        assertEquals(song1, fetchedSong2);
         //FindAllSongs
         Iterable<Song> fetchedSongs = dataAccessService.fetchSongsFromDatabase();
-        assertEquals(songs, fetchedSongs);
+        assertEquals(songs1, fetchedSongs);
+        //FindByName
+        fetchedSongs = dataAccessService.fetchSongsFromDatabase("WE");
+        assertEquals(songs2, fetchedSongs);
+        //FindBy Name but Song Name does not exist
+        assertThrows(FileNotFoundException.class, () -> dataAccessService.fetchSongsFromDatabase("Hi"));
     }
 
     @Test
@@ -102,7 +106,7 @@ public class DataAccessServiceTest {
     }
 
     @Test
-    void deleteSongsFromDatabase() {
+    void deleteSongsFromDatabase() throws FileNotFoundException {
         Song song1 = new Song("WE", "Lover", "Taylor Swift", "2024", "Pop", 999, 64);
         Song song2 = new Song("WE", "Lover", "Taylor Swift", "2020", "Pop", 999, 64);
         Song song3 = new Song("You", "Be", "Miley Cyrus", "2023", "Pop", 653, 32);
@@ -110,6 +114,11 @@ public class DataAccessServiceTest {
         songs.add(song1);
         songs.add(song2);
         songs.add(song3);
+        List<Song> songs2 = new ArrayList<>();
+        songs2.add(song1);
+        songs2.add(song2);
+        List<Song> songs3 = new ArrayList<>();
+        songs3.add(song3);
 
         //Mocking the behaviour of songRepository
         doAnswer(i -> {
@@ -120,15 +129,17 @@ public class DataAccessServiceTest {
             songs.remove(song3);
             return null;
         }).when(songRepository).deleteByName("You");
+        when(songRepository.findByName("Hi")).thenReturn(new ArrayList<>());
+        when(songRepository.findByName("You")).thenReturn(songs3);
+        when(songRepository.count()).thenReturn(3L);
 
         //Delete specific song
         dataAccessService.deleteSongsFromDatabase("You");
         assertFalse(songs.contains(song3));
         assertEquals(songs.size(), 2);
 
-        //Delete specific song but does not exist
-        dataAccessService.deleteSongsFromDatabase("Hi");
-        assertEquals(songs.size(), 2);
+        //Delete specific song but does not exist inside database
+        assertThrows(FileNotFoundException.class, () -> dataAccessService.deleteSongsFromDatabase("Hi"));
 
         //Delete all songs
         dataAccessService.deleteSongsFromDatabase();
