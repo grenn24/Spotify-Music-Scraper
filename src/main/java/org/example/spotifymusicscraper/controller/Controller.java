@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import org.example.spotifymusicscraper.model.*;
@@ -20,14 +21,14 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/scraper")
 @ResponseBody
-public class SpotifyMusicScraperController {
+public class Controller {
     private final WebClientService webClientService;
     private final DataAccessService dataAccessService;
     private final SongParserService songParserService;
 
     @Autowired
     //Using Constructor Injection to autowire SongRepository and WebClientHelper bean as a dependency
-    public SpotifyMusicScraperController(WebClientService webClientService, DataAccessService dataAccessService, SongParserService songParserService) {
+    public Controller(WebClientService webClientService, DataAccessService dataAccessService, SongParserService songParserService) {
         this.webClientService = webClientService;
         this.dataAccessService = dataAccessService;
         this.songParserService = songParserService;
@@ -89,7 +90,7 @@ public class SpotifyMusicScraperController {
     @PutMapping("/list/{playlistId}")
     @ResponseStatus(code = HttpStatus.CREATED, reason = "Songs from spotify playlist were successfully added to the database")
     //Fetches a list of Songs inside a playlist and maps each song to an entry in the database
-    public List<Song> addNewPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
+    public void addNewPlaylist(@PathVariable(name="playlistId", required = false) String playlistId) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + getAPIAccessToken());
         JSONObject JSONSongs = null;
@@ -102,7 +103,6 @@ public class SpotifyMusicScraperController {
         //Convert JSON file into a List of Songs
         List<Song> songs = songParserService.convertJSONObjectToListOfSongs(JSONSongs);
         dataAccessService.addSongsToDatabase(songs);
-        return songs;
     }
 
     //Delete Requests
@@ -121,5 +121,22 @@ public class SpotifyMusicScraperController {
         } catch (FileNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
+    }
+
+    //Exception Handlers
+    @ExceptionHandler(NullPointerException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    ResponseEntity<String> handleNullPointerException(NullPointerException e) {
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+    @ExceptionHandler(FileNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    ResponseEntity<String> handleFileNotFoundException(FileNotFoundException e) {
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+    }
+    @ExceptionHandler(UnsupportedEncodingException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    ResponseEntity<String> handleUnsupportedEncodingException(UnsupportedEncodingException e) {
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 }

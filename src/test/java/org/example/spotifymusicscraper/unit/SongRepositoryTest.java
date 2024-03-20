@@ -1,4 +1,4 @@
-package org.example.spotifymusicscraper.units;
+package org.example.spotifymusicscraper.unit;
 
 import org.example.spotifymusicscraper.model.Song;
 import org.example.spotifymusicscraper.repository.SongRepository;

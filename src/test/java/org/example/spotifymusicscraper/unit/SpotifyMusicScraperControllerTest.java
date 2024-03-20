@@ -1,4 +1,4 @@
-package org.example.spotifymusicscraper.units;
+package org.example.spotifymusicscraper.unit;
 
 public class SpotifyMusicScraperControllerTest {
 }

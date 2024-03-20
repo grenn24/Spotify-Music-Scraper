@@ -1,4 +1,4 @@
-package org.example.spotifymusicscraper.units;
+package org.example.spotifymusicscraper.unit;
 
 import org.example.spotifymusicscraper.model.Song;
 import org.example.spotifymusicscraper.repository.SongRepository;
@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
