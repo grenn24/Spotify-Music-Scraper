@@ -200,10 +200,14 @@ public class ControllerTest {
         mockMvc.perform(put("/scraper/list/456"))
                 .andExpect(status().isCreated());
 
-        //Exception Handling (FileNotFoundException)
+        //Business Logic
         when(webClientService.getAPIAccessToken()).thenReturn("123");
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + webClientService.getAPIAccessToken());
+        mockMvc.perform(put("/scraper/list/456"));
+        verify(webClientService).requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/playlists/" + "456" + "/tracks");
+
+        //Exception Handling (FileNotFoundException)
         when(webClientService.requestJSONObject("get", headers, "", 1024, "https://api.spotify.com", "/v1/playlists/" + "456" + "/tracks")).thenThrow(FileNotFoundException.class);
         mockMvc.perform(put("/scraper/list/456"))
                 .andExpect(status().isNotFound());
@@ -214,6 +218,9 @@ public class ControllerTest {
         //Request Mapping
         mockMvc.perform(delete("/scraper/list"))
                 .andExpect(status().isOk());
+
+        //Business Logic
+        verify(dataAccessService).deleteSongsFromDatabase();
     }
 
     @Test
@@ -221,6 +228,9 @@ public class ControllerTest {
         //Request Mapping
         mockMvc.perform(delete("/scraper/list/YOU"))
                 .andExpect(status().isOk());
+
+        //Business Logic
+        verify(dataAccessService).deleteSongsFromDatabase("YOU");
 
         //Exception Handling (FileNotFoundException)
         doThrow(FileNotFoundException.class).when(dataAccessService).deleteSongsFromDatabase("YOU");
